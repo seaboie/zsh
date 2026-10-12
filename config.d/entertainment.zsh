@@ -270,7 +270,7 @@ do_action() {
     case "$1" in
         --sleep)
             echo "💤 พักเครื่องใน 10 วินาที..."
-            sleep 10
+            sleep 5
             pmset sleepnow
             ;;
         --shutdown)
