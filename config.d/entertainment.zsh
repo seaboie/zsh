@@ -94,27 +94,7 @@ ytmp4() {
 
 # -----------------------------------------------  mp4 to MOV ----------------------------------------
 
-############## Convert mp4 to mov
 
-
-mp4tomov() {
-  input="$1"
-  if [ -z "$input" ] || [ ! -f "$input" ]; then
-    echo "Usage: converttomov <video_file>"
-    return 1
-  fi
-
-  filename=$(basename "$input")
-  name_no_ext="${filename%.*}"
-  output="${name_no_ext}.mov"
-
-  # Escape filename for subtitles filter (works in Zsh & Bash)
-  input_escaped="${input//\'/\\\'}"
-
-  ffmpeg -i "$input" -vf "subtitles='${input_escaped}'" -c:v libx264 -c:a aac -movflags +faststart "$output"; 
-  
-  say "Convert mp4 to mov for support ios devices , completed"
-}
 
 
 
@@ -125,272 +105,123 @@ alias m2="afplay '/Users/krit/Music/audio/คำเชย ๆ - big & the superb
 alias m3="afplay '/Users/krit/Music/audio/เสียงของหัวใจ.mp3'"
 
 
-### -------------- Function  Play Music by  [ afplay ]---------------  #######
+
+############################################################################################################
+############################################################################################################
 
 
-##  กด   n  ข้ามเพลง
-##  กด   q  จบเพลง แล้วออก
-##  กด   Ctr + c  : 2 ครั้ง   Exit
+##################################################.           Download   Youtube   ##########################################################
 
-# playmusic ~/Music/audio                 # เล่นวนไม่จำกัด
-# playmusic ~/Music/audio 30              # เล่น 30 นาที
-# playmusic ~/Music/audio 30 --sleep      # 30 นาที + sleep
-# playmusic ~/Music/audio 30 --shutdown   # 30 นาที + shutdown
+# 1. เพลงเดียว
+alias yta='yt-dlp --cookies-from-browser chrome -x --audio-format mp3 --audio-quality 0 --embed-metadata --embed-thumbnail --no-playlist -P ~/Music -o "%(title)s.%(ext)s"'
 
+# 2. แยกเพลงจากอัลบัมทั้งก้อน (chapter)
+alias ytasplit='yt-dlp --cookies-from-browser chrome -x --audio-format mp3 --audio-quality 0 --split-chapters --embed-thumbnail -P ~/Music -o "%(title)s.%(ext)s" -o "chapter:%(title)s/%(section_number)02d - %(section_title)s.%(ext)s"'
 
+# 3. ทั้ง playlist
+alias ytaplaylist='yt-dlp --cookies-from-browser chrome -x --audio-format mp3 --audio-quality 0 --embed-metadata --embed-thumbnail --yes-playlist -P ~/Music -o "%(playlist_title)s/%(playlist_index)02d - %(title)s.%(ext)s"'
 
-
-playmusic() {
-    if [ -z "$1" ]; then
-        echo "使用方法: playmusic <โฟลเดอร์> [นาที] [--sleep|--shutdown]"
-        echo "ตัวอย่าง: playmusic ~/Music/audio 30 --sleep"
-        return 1
-    fi
-
-    local dir="${1/#\~/$HOME}"
-    local minutes="${2:-0}"
-    local action="${3:-}"
-    local end_time=0
-    local afplay_pid=""
-    local force_quit=0
-    local quit_after_song=0
-
-    if [ ! -d "$dir" ]; then
-        echo "❌ ไม่พบโฟลเดอร์: $dir"
-        return 1
-    fi
-
-    if [ "$minutes" -gt 0 ]; then
-        end_time=$(( $(date +%s) + minutes * 60 ))
-        echo "🎵 กำลังเล่นเพลงจาก: $dir"
-        echo "⏰ จะหยุดใน $minutes นาที"
-        [ -n "$action" ] && echo "💤 หลังจากนั้นจะ $action"
-    else
-        echo "🎵 กำลังเล่นเพลงจาก: $dir"
-    fi
-    echo "   ⌨️  n = ข้าม | q = เล่นจบเพลงนี้แล้วออก | Ctrl+C = ออกทันที"
-    echo ""
-
-    # ปิด canonical mode เพื่อรับ 1 คีย์
-    local old_stty=$(stty -g </dev/tty 2>/dev/null)
-    stty -icanon -echo min 0 time 1 </dev/tty 2>/dev/null
-
-    # restore tty เมื่อออก
-    _pm_restore() {
-        stty "$old_stty" </dev/tty 2>/dev/null
-    }
-
-    # trap Ctrl+C: ตั้ง flag แล้ว loop จะเช็คเอง
-    trap 'force_quit=1' INT TERM
-
-    while true; do
-        while IFS= read -r f; do
-            # ออกทันทีถ้ากด Ctrl+C
-            if [ "$force_quit" -eq 1 ]; then
-                _pm_restore
-                echo ""
-                echo "⏹  ออกแล้ว"
-                return 0
-            fi
-
-            # เช็คเวลา
-            if [ "$end_time" -gt 0 ] && [ "$(date +%s)" -ge "$end_time" ]; then
-                _pm_restore
-                echo "⏰ ครบเวลาแล้ว"
-                do_action "$action"
-                return 0
-            fi
-
-            echo "▶️  $(basename "$f")"
-            afplay "$f" < /dev/null &
-            afplay_pid=$!
-
-            local skip=0
-
-            # รอเพลงเล่น + รับคีย์
-            while kill -0 "$afplay_pid" 2>/dev/null; do
-                # ออกทันที
-                if [ "$force_quit" -eq 1 ]; then
-                    kill "$afplay_pid" 2>/dev/null
-                    wait "$afplay_pid" 2>/dev/null
-                    _pm_restore
-                    echo ""
-                    echo "⏹  ออกแล้ว"
-                    return 0
-                fi
-
-                # อ่านคีย์ (timeout 0.1 วิ)
-                local key=""
-                IFS= read -r -k 1 -t 0.1 key </dev/tty 2>/dev/null
-
-                case "$key" in
-                    n|N)
-                        echo ""
-                        echo "⏭  ข้าม"
-                        kill "$afplay_pid" 2>/dev/null
-                        skip=1
-                        break
-                        ;;
-                    q|Q)
-                        if [ "$quit_after_song" -eq 0 ]; then
-                            quit_after_song=1
-                            echo ""
-                            echo "⏹  จะออกหลังเพลงนี้จบ (Ctrl+C = ออกทันที)"
-                        fi
-                        ;;
-                esac
-
-                # เช็คเวลา
-                if [ "$end_time" -gt 0 ] && [ "$(date +%s)" -ge "$end_time" ]; then
-                    kill "$afplay_pid" 2>/dev/null
-                    wait "$afplay_pid" 2>/dev/null
-                    _pm_restore
-                    echo "⏰ ครบเวลาแล้ว"
-                    do_action "$action"
-                    return 0
-                fi
-            done
-
-            wait "$afplay_pid" 2>/dev/null
-
-            # เพลงจบ — ถ้ากด q ไว้ ให้ออก
-            if [ "$quit_after_song" -eq 1 ]; then
-                _pm_restore
-                echo "✅ เพลงจบแล้ว ออก"
-                return 0
-            fi
-
-            [ "$skip" -eq 1 ] && continue
-        done < <(find "$dir" -name "*.mp3" | sort -R)
-    done
-}
-
-# ฟังก์ชันช่วย sleep/shutdown
-do_action() {
-    case "$1" in
-        --sleep)
-            echo "💤 พักเครื่องใน 10 วินาที..."
-            sleep 5
-            pmset sleepnow
-            ;;
-        --shutdown)
-            echo "🔌 ปิดเครื่องใน 60 วินาที..."
-            sudo shutdown -h +1
-            ;;
-        *)
-            echo "✅ เสร็จแล้ว"
-            ;;
-    esac
+# 4. เลือกเพลงใน playlist
+ytapick() {
+  # ytapick "1,5,9" "ลิงก์" 
+  # ytapick "1-3,9" "ลิงก์"
+  # ytapick "5:" "ลิงก์"
+  # ytapick ":10"
+  local items="$1"
+  shift
+  yt-dlp --cookies-from-browser chrome -x --audio-format mp3 --audio-quality 0 \
+    --embed-metadata --embed-thumbnail --yes-playlist \
+    --playlist-items "$items" \
+    -P ~/Music \
+    -o "%(playlist_title)s/%(playlist_index)02d - %(title)s.%(ext)s" \
+    "$@"
 }
 
 
+############################################################################################################
+############################################################################################################
+
+converttomp4slowly() {
+  # วิธีใช้: converttomp4slowly input.mp4  [output.mp4]  [speed 0.5-1.0]  [quality 1-100]
+  if [[ -z "$1" ]]; then
+    echo "วิธีใช้ 1: converttomp4slowly input.mp4 "
+    echo "วิธีใช้2 ( ระบุ อาร์กิวเมนต์ เพิ่ม ): converttomp4slowly input.mp4 [output.mp4] [speed 0.5-1.0] [quality 1-100] "
+    echo "speed : default = 0.75"
+    echo "quality : default = 60 >> ค่ายิ่งมาก ภาพยิ่งชัด"
+    return 1
+  fi
+
+  local input="$1"
+  local output="${2:-${input:r}_hevc.mp4}"
+  local speed="${3:-0.75}"
+  local quality="${4:-60}"
+  
+
+  if [[ ! -f "$input" ]]; then
+    echo "ไม่พบไฟล์: $input"
+    return 1
+  fi
+
+  # เช็คว่ามีแทร็กเสียงไหม
+  if ffprobe -v error -select_streams a -show_entries stream=index \
+       -of csv=p=0 "$input" | grep -q .; then
+    ffmpeg -n -i "$input" \
+      -filter_complex "[0:v]setpts=PTS/${speed}[v];[0:a]atempo=${speed}[a]" \
+      -map "[v]" -map "[a]" \
+      -c:v hevc_videotoolbox -q:v "$quality" -tag:v hvc1 \
+      -c:a aac -b:a 192k \
+      -movflags +faststart \
+      "$output"
+  else
+    ffmpeg -n -i "$input" \
+      -filter:v "setpts=PTS/${speed}" -an \
+      -c:v hevc_videotoolbox -q:v "$quality" -tag:v hvc1 \
+      -movflags +faststart \
+      "$output"
+  fi
+}
+
+##################################################################                Convert to    MP4
+converttomp4() {
+  # วิธีใช้: converttomp4 input.mov                  # ได้ input_hevc.mp4 คุณภาพ 60
+  #          converttomp4 input.mov output.mp4       # ตั้งชื่อผลลัพธ์เอง
+  #          converttomp4 input.mov output.mp4 70    # ปรับคุณภาพเป็น 70
+  if [[ -z "$1" ]]; then
+    echo "วิธีใช้: converttomp4 input [output.mp4] [quality 1-100]"
+    return 1
+  fi
+
+  local input="$1"
+  local output="${2:-${input:r}_hevc.mp4}"
+  local quality="${3:-60}"
+
+  if [[ ! -f "$input" ]]; then
+    echo "ไม่พบไฟล์: $input"
+    return 1
+  fi
+
+  ffmpeg -n -i "$input" \
+    -c:v hevc_videotoolbox -q:v "$quality" -tag:v hvc1 \
+    -c:a aac -b:a 192k \
+    -movflags +faststart \
+    "$output"
+}
+
+
+convert() {
+
+  local input="$1"
+  local output="${2:-${input:r}_hevc.mp4}"
+  local quality="${3:-60}"
+
+  if [[ -z input ]]; then
+    echo "🔥 Oops !!!!!"
+    echo "quality"P
+    echo " ต้องมี input 1 file name"
+    return 1
+  fi
 
 
 
-# playmusic() {
-#     if [ -z "$1" ]; then
-#         echo "使用方法: playmusic <โฟลเดอร์> [นาที] [--sleep|--shutdown]"
-#         return 1
-#     fi
 
-#     local dir="${1/#\~/$HOME}"
-#     local minutes="${2:-0}"
-#     local action="${3:-}"
-#     local end_time=0
-#     local afplay_pid=""
-
-#     if [ ! -d "$dir" ]; then
-#         echo "❌ ไม่พบโฟลเดอร์: $dir"
-#         return 1
-#     fi
-
-#     if [ "$minutes" -gt 0 ]; then
-#         end_time=$(( $(date +%s) + minutes * 60 ))
-#         echo "🎵 กำลังเล่นเพลงจาก: $dir"
-#         echo "⏰ จะหยุดใน $minutes นาที"
-#         [ -n "$action" ] && echo "💤 หลังจากนั้นจะ $action"
-#     else
-#         echo "🎵 กำลังเล่นเพลงจาก: $dir"
-#     fi
-#     echo "   ⌨️  n = ข้ามเพลง | q = เล่นจบเพลงนี้แล้วออก | Ctrl+C = ออกทันที"
-#     echo ""
-
-#     # 🎯 ปิด canonical mode
-#     local old_stty=$(stty -g </dev/tty 2>/dev/null)
-#     stty -icanon -echo min 0 time 1 </dev/tty 2>/dev/null
-
-#     # 🎯 trap: Ctrl+C ออกทันที
-#     cleanup() {
-#         stty "$old_stty" </dev/tty 2>/dev/null
-#         [ -n "$afplay_pid" ] && kill "$afplay_pid" 2>/dev/null
-#         pkill -P $$ afplay 2>/dev/null
-#         echo ""
-#         echo "⏹  ออกแล้ว"
-#         # ใช้ exit จาก function ไม่ได้ ต้อง return
-#         return 0
-#     }
-#     trap 'cleanup; return 0' INT
-
-#     local quit_after_song=0
-#     local force_quit=0
-
-#     while true; do
-#         while IFS= read -r f; do
-#             [ "$force_quit" -eq 1 ] && { stty "$old_stty" </dev/tty 2>/dev/null; return 0; }
-
-#             if [ "$end_time" -gt 0 ] && [ "$(date +%s)" -ge "$end_time" ]; then
-#                 echo "⏰ ครบเวลาแล้ว"
-#                 stty "$old_stty" </dev/tty 2>/dev/null
-#                 do_action "$action"
-#                 return 0
-#             fi
-
-#             echo "▶️  $(basename "$f")"
-#             afplay "$f" < /dev/null &
-#             afplay_pid=$!
-
-#             local skip=0
-
-#             while kill -0 "$afplay_pid" 2>/dev/null; do
-#                 local key=""
-#                 IFS= read -r -k 1 -t 0.1 key </dev/tty 2>/dev/null
-
-#                 case "$key" in
-#                     n|N)
-#                         echo ""
-#                         echo "⏭  ข้าม"
-#                         kill "$afplay_pid" 2>/dev/null
-#                         skip=1
-#                         break
-#                         ;;
-#                     q|Q)
-#                         if [ "$quit_after_song" -eq 0 ]; then
-#                             quit_after_song=1
-#                             echo ""
-#                             echo "⏹  จะออกหลังเพลงนี้จบ (กด Ctrl+C เพื่อออกทันที)"
-#                         fi
-#                         ;;
-#                 esac
-
-#                 if [ "$end_time" -gt 0 ] && [ "$(date +%s)" -ge "$end_time" ]; then
-#                     kill "$afplay_pid" 2>/dev/null
-#                     wait "$afplay_pid" 2>/dev/null
-#                     echo "⏰ ครบเวลาแล้ว"
-#                     stty "$old_stty" </dev/tty 2>/dev/null
-#                     do_action "$action"
-#                     return 0
-#                 fi
-#             done
-
-#             wait "$afplay_pid" 2>/dev/null
-
-#             if [ "$quit_after_song" -eq 1 ]; then
-#                 echo "✅ เพลงจบแล้ว ออก"
-#                 stty "$old_stty" </dev/tty 2>/dev/null
-#                 return 0
-#             fi
-
-#             [ "$skip" -eq 1 ] && continue
-#         done < <(find "$dir" -name "*.mp3" | sort -R)
-#     done
-# }
+}
