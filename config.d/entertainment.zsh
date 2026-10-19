@@ -212,17 +212,89 @@ converttomp4() {
 }
 
 
-convert() {
+#####################################################
+#################################################################.   Audio  :::  Cut song in album
 
-  local input="$1"
-  local output="${2:-${input:r}_hevc.mp4}"
-  local quality="${3:-60}"
 
-  if [[ -z input ]]; then
-    echo "🔥 Oops !!!!!"
-    echo "quality"P
-    echo " ต้องมี input 1 file name"
+asplitalbum() {
+  local input="$1" expected="$2" go="$3"
+  local noise="${SPLIT_NOISE:--30dB}" dur="${SPLIT_DUR:-0.2}"
+
+  if [[ -z "$input" || -z "$expected" ]]; then
+    echo ""
+    echo "วิธีใช้:"
+    echo ""
+    echo "Run ::: asplitalbum ไฟล์เพลง.mp3 จำนวนเพลง :::   ก่อน เพื่อเช็คว่าจำนวนเพลง ครบไหม"
+    echo "ถ้าจำนวนเพลงครบ :::"
+    echo "Run :::  asplitalbum ไฟล์.mp3 จำนวนเพลง [-go]"
+    echo "================================="
+    echo ""
+    echo ""
+    echo "ถ้าจำนวนเพลง ไม่ครบ ต้องมาปรับ ค่า :::"
+    echo "Default : ปรับความไวได้: SPLIT_NOISE=-35dB SPLIT_DUR=0.5 splitalbum ..."
+    echo ""
+    echo "SPLIT_NOISE : ค่า ยิ่งใกล็ 0 ยิ่งดังมากๆๆๆ"
+    echo "SPLIT_NOISE : -25dB = เสียงค่อย ๆ นิดหน่อยก็ถือว่าเงียบแล้ว ( ดัง )"
+    echo "SPLIT_NOISE : -50dB = ต้องเงียบสนิทจริง ๆ ถึงจะนับ ( เงียบ )"
+    echo ""
+    echo "SPLIT_DUR   : 0.2 = เงียบแค่ 0.2 วินาทีก็นับ ( เงียบ )"
+    echo "SPLIT_DUR   : 1.0 = ต้องเงียบนาน 1 วินาทีขึ้นไปถึงจะนับ ( เงียบ นาน นาน นาน )"
+    echo ""
+    echo "              จำนวน เพลงไม่ครบ"
+    echo "     เช่น อัลบั้มมี 12 เพลง แต่ตรวจเจอแค่ 9"
+    echo "เพิ่ม SPLIT_NOISE ให้ใกล้ 0 (เช่น -35dB เป็น -25dB)"
+    echo "ลด SPLIT_DUR (เช่น 0.5 เป็น 0.2)"
+    echo "ตัวอย่าง ::: -35db กับ 0.5  ==> ได้จำนวนเพลง ไม่ครบ น้อยกว่า ==> -30db กับ 0.2"
+    echo ""
     return 1
   fi
+  [[ -f "$input" ]] || { echo "ไม่พบไฟล์: $input"; return 1; }
 
+  local total
+  total=$(ffprobe -v error -show_entries format=duration -of csv=p=0 "$input")
+
+  local -a times
+  times=(0 ${(f)"$(ffmpeg -nostats -i "$input" -af silencedetect=noise=$noise:d=$dur -f null - 2>&1 \
+    | awk -v t="$total" '/silence_start/{s=$5} /silence_end/{m=(s+$5)/2; if(m>30 && m<t-10) print m}')"})
+
+  local n=${#times} i num sec
+  echo "ตรวจเจอ $n เพลง (ต้องการ $expected)"
+  for i in {1..$n}; do
+    sec=${times[i]%.*}
+    printf "  %02d  เริ่มที่ %d:%02d\n" $i $(( sec / 60 )) $(( sec % 60 ))
+  done
+
+  if (( n != expected )); then
+    echo "จำนวนไม่ตรง ยังไม่ตัด ลองปรับ SPLIT_NOISE / SPLIT_DUR แล้วรันตรวจอีกครั้ง"
+    return 1
+  fi
+  if [[ "$go" != "-go" ]]; then
+    echo "จำนวนตรงแล้ว ถ้าโอเคให้รันซ้ำพร้อม -go เพื่อตัดจริง"
+    return 0
+  fi
+
+  local base="${input:t:r}"
+  local out="${base}_tracks"
+  mkdir -p "$out"
+  local cover="$out/.cover.jpg"
+  ffmpeg -nostats -loglevel error -y -i "$input" -an -frames:v 1 "$cover" 2>/dev/null
+  local -a cmap range
+  if [[ -s "$cover" ]]; then
+    cmap=(-i "$cover" -map 0:a -map 1:v -c copy -id3v2_version 3 -metadata:s:v title="Album cover" -metadata:s:v comment="Cover (front)")
+    echo "พบปกอัลบั้ม จะแนบเข้าทุกเพลง"
+  else
+    cmap=(-map 0:a -c copy -id3v2_version 3)
+    echo "ไม่พบปกอัลบั้มในไฟล์ต้นฉบับ จะตัดเฉพาะเสียง"
+  fi
+
+  for i in {1..$n}; do
+    num=$(printf "%02d" $i)
+    range=(-ss ${times[i]})
+    (( i < n )) && range+=(-t $(( times[i+1] - times[i] )))
+    ffmpeg -nostats -loglevel error -y "${range[@]}" -i "$input" "${cmap[@]}" \
+      -metadata track="$i/$n" "$out/$num - Track $num.mp3"
+  done
+
+  rm -f "$cover"
+  echo "เสร็จแล้ว: $n ไฟล์ อยู่ในโฟลเดอร์ $out/"
 }
