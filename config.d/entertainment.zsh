@@ -183,9 +183,9 @@ converttomp4slowly() {
 
 ##################################################################                Convert to    MP4
 converttomp4() {
-  # วิธีใช้: converttomp4 input.mov                  # ได้ input_hevc.mp4 คุณภาพ 60
+  #    วิธีใช้: converttomp4 input.mov                     # ได้ input_hevc.mp4 คุณภาพ 60
   #          converttomp4 input.mov output.mp4       # ตั้งชื่อผลลัพธ์เอง
-  #          converttomp4 input.mov output.mp4 70    # ปรับคุณภาพเป็น 70
+  #          converttomp4 input.mov output.mp4 70    # ค่า Default quality = 60
   if [[ -z "$1" ]]; then
     echo "วิธีใช้: converttomp4 input [output.mp4] [quality 1-100]"
     return 1
