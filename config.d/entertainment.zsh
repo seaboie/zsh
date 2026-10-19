@@ -187,7 +187,11 @@ converttomp4() {
   #          converttomp4 input.mov output.mp4       # ตั้งชื่อผลลัพธ์เอง
   #          converttomp4 input.mov output.mp4 70    # ค่า Default quality = 60
   if [[ -z "$1" ]]; then
-    echo "วิธีใช้: converttomp4 input [output.mp4] [quality 1-100]"
+    echo "วิธีใช้: converttomp4 input.MOV [output.mp4] [quality 1-100]"
+    echo ""
+    echo "      converttomp4 input.webm output.mp4"
+    echo ""
+    echo "      converttomp4 input.mp4 output.mp4 80"
     return 1
   fi
 
@@ -220,8 +224,5 @@ convert() {
     echo " ต้องมี input 1 file name"
     return 1
   fi
-
-
-
 
 }
