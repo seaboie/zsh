@@ -113,10 +113,10 @@ alias m3="afplay '/Users/krit/Music/audio/เสียงของหัวใ�
 ##################################################.           Download   Youtube   ##########################################################
 
 # 1. เพลงเดียว
-alias yta='yt-dlp --cookies-from-browser chrome -x --audio-format mp3 --audio-quality 0 --embed-metadata --embed-thumbnail --no-playlist -P ~/Music -o "%(title)s.%(ext)s"'
+alias yta='yt-dlp --cookies-from-browser chrome -x --audio-format mp3 --audio-quality 0 --embed-metadata --embed-thumbnail --no-playlist -P ~/Music -o "%(title)s [%(id)s].%(ext)s"'
 
 # 2. แยกเพลงจากอัลบัมทั้งก้อน (chapter)
-alias ytasplit='yt-dlp --cookies-from-browser chrome -x --audio-format mp3 --audio-quality 0 --split-chapters --embed-thumbnail -P ~/Music -o "%(title)s.%(ext)s" -o "chapter:%(title)s/%(section_number)02d - %(section_title)s.%(ext)s"'
+alias ytasplitchapter='yt-dlp --cookies-from-browser chrome -x --audio-format mp3 --audio-quality 0 --split-chapters --embed-thumbnail -P ~/Music -o "%(title)s.%(ext)s" -o "chapter:%(title)s/%(section_number)02d - %(section_title)s.%(ext)s"'
 
 # 3. ทั้ง playlist
 alias ytaplaylist='yt-dlp --cookies-from-browser chrome -x --audio-format mp3 --audio-quality 0 --embed-metadata --embed-thumbnail --yes-playlist -P ~/Music -o "%(playlist_title)s/%(playlist_index)02d - %(title)s.%(ext)s"'
@@ -216,17 +216,18 @@ converttomp4() {
 #################################################################.   Audio  :::  Cut song in album
 
 
-asplitalbum() {
+ytasplitalbum() {
   local input="$1" expected="$2" go="$3"
-  local noise="${SPLIT_NOISE:--30dB}" dur="${SPLIT_DUR:-0.2}"
+  # local noise="${SPLIT_NOISE:--30dB}" dur="${SPLIT_DUR:-0.2}"
+  local noise="${SPLIT_NOISE:--35dB}" dur="${SPLIT_DUR:-0.1}"
 
   if [[ -z "$input" || -z "$expected" ]]; then
     echo ""
     echo "วิธีใช้:"
     echo ""
-    echo "Run ::: asplitalbum ไฟล์เพลง.mp3 จำนวนเพลง :::   ก่อน เพื่อเช็คว่าจำนวนเพลง ครบไหม"
+    echo "Run ::: ytasplitalbum ไฟล์เพลง.mp3 จำนวนเพลง :::   ก่อน เพื่อเช็คว่าจำนวนเพลง ครบไหม"
     echo "ถ้าจำนวนเพลงครบ :::"
-    echo "Run :::  asplitalbum ไฟล์.mp3 จำนวนเพลง [-go]"
+    echo "Run :::  ytasplitalbum ไฟล์.mp3 จำนวนเพลง [-go]"
     echo "================================="
     echo ""
     echo ""
@@ -246,6 +247,7 @@ asplitalbum() {
     echo "ลด SPLIT_DUR (เช่น 0.5 เป็น 0.2)"
     echo "ตัวอย่าง ::: -35db กับ 0.5  ==> ได้จำนวนเพลง ไม่ครบ น้อยกว่า ==> -30db กับ 0.2"
     echo ""
+    echo "ดู Path ให้ตรงกันด้วยเพราะ folder เพลงที่ตัดแล้วจะไปอยู่ที่ตำแหน่งที่ run command"
     return 1
   fi
   [[ -f "$input" ]] || { echo "ไม่พบไฟล์: $input"; return 1; }
