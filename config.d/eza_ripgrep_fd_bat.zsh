@@ -44,3 +44,26 @@ rgc() {
 
 # --- 7. env มีสี  - ใช้ grc ย้อมสีให้ ---
 alias env='grc --colour=auto /usr/bin/env'
+
+# --- 8. Eza --- 
+################################################################ Install:  EZA  :  ` brew install eza `
+########## Install:         ` brew install vivid `       THEME
+### ดูรายชื่อ Theme ทั้งหมด :    ` vivid themes `
+
+########## อันนี้คุมชื่อไฟล์ -
+# export LS_COLORS="$(vivid generate tokyonight-night)"       # Set Theme
+export LS_COLORS="$(vivid generate catppuccin-macchiato)"     # Set Theme
+# export LS_COLORS="$(vivid generate solarized-dark)"         # Set Theme
+
+# อันนี้คุมคอลัมน์อื่นๆ ของ eza - เพิ่มอันนี้เข้าไป
+export EZA_COLORS="\
+da=2;36:\
+uu=0;37:\
+uR=1;31:\
+gu=0;37:\
+sn=1;32:\
+sb=0;32:\
+ur=1;33:\
+uw=1;31:\
+ux=1;32:\
+"
