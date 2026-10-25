@@ -16,7 +16,7 @@ function starship_on() {
 function starship_off() {
     unfunction prompt_starship_setup 2>/dev/null
     autoload -U promptinit; promptinit
-    PROMPT='%F{blue}%n@%m%f %~ %# '
+    PROMPT='%F{magenta}%n@%m%f %~ %# '
     # prompt adam1
 }
 starship_off 
@@ -45,15 +45,18 @@ rgc() {
 # --- 7. env มีสี  - ใช้ grc ย้อมสีให้ ---
 alias env='grc --colour=auto /usr/bin/env'
 
-# --- 8. Eza --- 
+# --- 8. Eza ---  ls -l
 ################################################################ Install:  EZA  :  ` brew install eza `
-########## Install:         ` brew install vivid `       THEME
-### ดูรายชื่อ Theme ทั้งหมด :    ` vivid themes `
+########## --- 8.1.0 Install:         ` brew install vivid `       THEME สีสำหรับ File lists
 
-########## อันนี้คุมชื่อไฟล์ -
+
+########## อันนี้คุมชื่อไฟล์ -     เปลี่ยนสี ไฟล์.     vivid
+### ดูรายชื่อ Theme ทั้งหมด :    ` vivid themes `
 # export LS_COLORS="$(vivid generate tokyonight-night)"       # Set Theme
-export LS_COLORS="$(vivid generate catppuccin-macchiato)"     # Set Theme
+# export LS_COLORS="$(vivid generate catppuccin-macchiato)"     # Set Theme
 # export LS_COLORS="$(vivid generate solarized-dark)"         # Set Theme
+# export LS_COLORS="$(vivid generate cyberdream-light)"         # Set Theme
+export LS_COLORS="$(vivid generate tokyonight-moon)"         # Set Theme
 
 # อันนี้คุมคอลัมน์อื่นๆ ของ eza - เพิ่มอันนี้เข้าไป
 export EZA_COLORS="\
